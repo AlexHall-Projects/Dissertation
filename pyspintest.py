@@ -2,10 +2,11 @@ from simple_pyspin import Camera
 import time
 from PIL import Image
 import os
+from multiprocessing import Process
+
 
 def image_capture(duration):
-
-    num_frames = int(duration*50)
+    num_frames = int(duration * 50)
 
     with Camera() as cam:
         # If this is a color camera, request the data in RGB format.
@@ -18,8 +19,8 @@ def image_capture(duration):
         cam.Width = cam.SensorWidth
         cam.Height = cam.SensorHeight
 
-        #set framerate
-#        cam.AcquisitionFrameRate = 60
+        # set framerate
+        #        cam.AcquisitionFrameRate = 60
 
         print('Opened camera: %s (#%s)' % (cam.DeviceModelName, cam.DeviceSerialNumber))
 
@@ -38,7 +39,7 @@ def image_capture(duration):
         print('el is', el)
         cam.stop()
 
-    print('Acquired %d images in %.2f s (~ %.1f fps)' % (len(imgs), el, len(imgs)/el))
+    print('Acquired %d images in %.2f s (~ %.1f fps)' % (len(imgs), el, len(imgs) / el))
 
     # Make a directory to save some images
     output_dir = 'test_images'
@@ -52,3 +53,8 @@ def image_capture(duration):
         Image.fromarray(img).save(os.path.join(output_dir, '%08d.jpg' % n))
 
     return start
+
+
+p1 = Process(target=image_capture)
+p1.start()
+p1.join()
