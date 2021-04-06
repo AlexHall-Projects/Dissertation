@@ -19,7 +19,7 @@ def image_capture(duration):
         cam.Height = cam.SensorHeight
 
         #set framerate
-        cam.AcquisitionFrameRate = 60
+#        cam.AcquisitionFrameRate = 60
 
         print('Opened camera: %s (#%s)' % (cam.DeviceModelName, cam.DeviceSerialNumber))
 
@@ -28,12 +28,14 @@ def image_capture(duration):
         # Start recording
         cam.start()
         start = time.time()
+        print(start)
 
         # Get 100 images as numpy arrays
         imgs = [cam.get_array() for n in range(num_frames)]
 
         # Stop recording
         el = time.time() - start
+        print('el is', el)
         cam.stop()
 
     print('Acquired %d images in %.2f s (~ %.1f fps)' % (len(imgs), el, len(imgs)/el))
@@ -49,4 +51,4 @@ def image_capture(duration):
     for n, img in enumerate(imgs):
         Image.fromarray(img).save(os.path.join(output_dir, '%08d.jpg' % n))
 
-    return
+    return start

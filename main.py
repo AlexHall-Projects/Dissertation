@@ -4,7 +4,7 @@ from PyQt5 import QtGui as qtg
 from PyQt5 import QtCore as qtc
 from PyQt5 import QtMultimediaWidgets as qtmw
 from PyQt5 import QtMultimedia as qtmm
-from simple_pyspin import Camera
+#from simple_pyspin import Camera
 import cv2
 import time
 from PIL import Image
@@ -17,22 +17,52 @@ class MainWindow(qtw.QMainWindow):
         "MainWindow constructor"
         super().__init__()
         # main UI code goes here
+        "configure main window"
         self.resize(qtc.QSize(1000, 600)) #size of application on opening
+        self.setWindowTitle('Eye Tracker GUI') #set title
+        self.setWindowIcon(qtg.QIcon('eye2.jpg')) #set window icon
         base_widget = qtw.QWidget()
         base_widget.setLayout(qtw.QHBoxLayout()) #box layout places widgets auto right to left and top to bottom
+
+        "configure tab widget"
         notebook = qtw.QTabWidget() #adds tab widget that will contain video and camera viewfinder
         notebook.setMinimumSize(400, 200) #sets minimum size in case user resizes window
         base_widget.layout().addWidget(notebook) #add the notebook as a widget to the base widget layout
+
+        "configure video file viewer"
         self.file_list = qtw.QListWidget() #create widget for video file viewer
         self.file_list.setFixedSize(300,100) #sets fixed size of file viewer
         base_widget.layout().addWidget(self.file_list) #adds the file viewer to the base widget
+
         self.setCentralWidget(base_widget) #set base widget as central widget, without this widget will not be visible
+
+        "status bar"
+        self.status_bar = qtw.QStatusBar() #setup status bar
+        self.setStatusBar(self.status_bar)#appending with 'self' enables object globally
+
+        "menu bar"
+        menu_bar = self.menuBar()
+        file_menu = menu_bar.addMenu('File')
+        #video_folder = menu_bar.addMenu('Video folder')
+        support_menu = menu_bar.addMenu('Support')
+        video_folder = file_menu.addAction('Video folder')
+        video_folder.triggered.connect(self.vid_file)
+        image_folder = file_menu.addAction('Image folder')
+        image_folder.triggered.connect(self.img_file)
+        help = support_menu.addAction('Help')
+        help.triggered.connect(self.help)
+
 
         "Video play controls"
         toolbar = self.addToolBar("Video & Camera Controls") #create toolbar named video & camera controls
         play_action = toolbar.addAction('Play') #add play button
+        play_icon = self.style().standardIcon(qtw.QStyle.SP_MediaPlay) #assign play icon.
+        play_action.setIcon(play_icon) #link play icon to play action
         pause_action = toolbar.addAction('Pause') #add pause button
         stop_action = toolbar.addAction('Stop') #add stop button
+        self.addToolBar(qtc.Qt.BottomToolBarArea, toolbar) #toolbar defaults to bottom of page
+        toolbar.setMovable(False) #toolbar cannot be moved
+        toolbar.setFloatable(False) #toolbar cannot float
 
         "Get program to make a file with specific name unless it already exists"
         self.video_dir = qtc.QDir.home()
@@ -54,8 +84,9 @@ class MainWindow(qtw.QMainWindow):
 
         "Add video widget to GUI"
         notebook.addTab(self.video_widget, "Video")
-        play_action.triggered.connect(self.player.play)
-        play_action.triggered.connect(self.pyspin_grabber)
+        #play_action.triggered.connect(self.player.play)
+        play_action.triggered.connect(self.test_control)
+        #play_action.triggered.connect(self.pyspin_grabber)
         #play_action.triggered.connect(self.imgacq)
         pause_action.triggered.connect(self.player.pause)
         stop_action.triggered.connect(self.player.stop)
@@ -63,20 +94,36 @@ class MainWindow(qtw.QMainWindow):
         # end main UI code
         self.show()
 
-    #######################
-    ## video file viewer ##
-    #######################
-    #def videoplay(self):
-    #    self.player.play()
+    "function integrating the video playback and camera control --heart of program--"
+    def test_control(self):
+        self.statusBar().showMessage('Acquiring and saving images, please wait.', 5000) #no idea where this doesn't show up
+        timer1 = time.time() #get time of video starting
+        self.player.play() #play video
+        import pyspintest
+        
+        ret_value = pyspintest.image_capture(self.duration) #call image capture script and assign its return value
+        print(ret_value) #for dev purposes only
+        self.cam_lag = float(ret_value - timer1) #compute lag time of camera
+        self.test_concluded_msg(self.cam_lag) #update status bar message
 
-    #def onclick(self):
-    #    p1 = Process(target=self.imgacq)
-    #    p2 = Process(target=self.videoplay)
-    #    p1.start()
-    #    p2.start()
-    #    p1.join()
-    #    p2.join()
+    "function test concluded status message"
+    def test_concluded_msg(self, cam_lag):
+        self.statusBar().showMessage('Test completed, camera lag time: %.2f seconds' % cam_lag) #had to break out
+        #into seperate function due to status bar buggy output
 
+    "function for viewing the video files"
+    def vid_file(self):
+        os.system('explorer.exe "C:\\Users\\ajh-1\\Video_file"') #explorer opens on documents rather than given file path, unsure why.
+
+    "fucntion for viewing the image files"
+    def img_file(self):
+        os.system('explorer.exe "C:\\Users\\ajh-1\\OneDrive\\Documents\\Dissertation\\test_images"')#also doesn't open correct path, permissions?
+
+    "function to control links to support docs --support docs yet to be written--"
+    def help(self): #link to support docs in here
+        pass
+
+    "refresh the video file list to ensure it's up to date"
     def refresh_video_list(self):
         self.file_list.clear()
         video_files = self.video_dir.entryList(
@@ -90,12 +137,14 @@ class MainWindow(qtw.QMainWindow):
     ### link file selection to video player ###
     ###########################################
 
+    "set the video file selected by the user for the test"
     def on_file_selected(self, item):
         fn = item.text()
         url = qtc.QUrl.fromLocalFile(self.video_dir.filePath(fn))
         content = qtmm.QMediaContent(url)
         self.player.setMedia(content)
 
+    "Function to calculate duration of video, this is required for camera control"
     def capture_duration(self, item):#recieves file list item from file_list
         fn = item.text() #extract text data of file, ie file name
         url = qtc.QUrl.fromLocalFile(self.video_dir.filePath(fn)) #get URL of file
@@ -106,50 +155,12 @@ class MainWindow(qtw.QMainWindow):
         data = cv2.VideoCapture(url) #start video capture with openCV
         frames = data.get(cv2.CAP_PROP_FRAME_COUNT) #get number of frames of video
         fps = int(data.get(cv2.CAP_PROP_FPS)) #get fps of video
-        duration = int(frames/fps) #compute frames/fps for total duration in seconds
+        duration = float(frames/fps) #compute frames/fps for total duration in seconds
         print("Duration of video is:", duration) #print for test purposes only.
+        self.status_bar.showMessage('Duration of video is %.2f seconds.' % duration)
         self.duration = duration
         return duration
 
-    def pyspin_grabber(self):
-        import pyspintest
-        pyspintest.image_capture(self.duration)
-
-    # def imgacq(self):#FPS of camera averages 54FPS
-    #     duration = self.duration
-    #     print('Duration is', duration
-    #     num_frames = (duration*60) #duration of video in seconds multiplied by recording frame rate of camera.
-    #     print(num_frames)
-    #     with Camera() as cam:
-    #         if 'Bayer' in cam.PixelFormat:
-    #             cam.PixelFormat = 'RGB8'
-    #
-    #     cam.OffsetX = 0
-    #     cam.OffsetY = 0
-    #     cam.Width = cam.SensorWidth
-    #     cam.Height = cam.SensorHeight
-    #
-    #     self.statusBar().showMessage('Opened camera %s (#%s), now recording...' % (cam.DeviceModelName, cam.DeviceSerialNumber))
-    #     cam.start()
-    #     start = time.time()
-    #
-    #     imgs = [cam.get_array() for n in range(num_frames)] #num frames must = number of frames in selected video.
-    #
-    #     el = time.time() - start
-    #     cam.stop()
-    #
-    #     print('Acquired %d images in %.2f s (~ %.1f fps)' % (len(imgs), el, len(imgs) / el))
-    #
-    #     # Make a directory to save some images
-    #     output_dir = 'test_images'
-    #     if not os.path.exists(output_dir):
-    #         os.makedirs(output_dir)
-    #
-    #     print('Saving to "%s"' % output_dir)
-    #
-    #     # Save them
-    #     for n, img in enumerate(imgs):
-    #         Image.fromarray(img).save(os.path.join(output_dir, '%08d.jpg' % n))
 
 if __name__ == '__main__': # only runs code if scripts is called directly
     app = qtw.QApplication(sys.argv)
