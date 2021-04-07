@@ -9,7 +9,6 @@ import cv2
 import time
 from PIL import Image
 import os
-from multiprocessing import Process
 
 
 class MainWindow(qtw.QMainWindow):
@@ -94,14 +93,13 @@ class MainWindow(qtw.QMainWindow):
         self.show()
 
     "function integrating the video playback and camera control --heart of program--"
-
     def test_control(self, ret_value):
         self.statusBar().showMessage('Acquiring and saving images, please wait.',
                                      5000)  # no idea where this doesn't show up
         timer1 = time.time()  # get time of video starting
         self.player.play()  # play video
-        import pyspintest
-        ret_value = pyspintest.image_capture(self.duration)  # call image capture script and assign its return value
+        import imgacq
+        ret_value = imgacq.image_capture(self.duration)  # call image capture script and assign its return value
         print(ret_value)  # for dev purposes only
         self.cam_lag = float(ret_value - timer1)  # compute lag time of camera
         self.test_concluded_msg(self.cam_lag)  # update status bar message
@@ -120,8 +118,7 @@ class MainWindow(qtw.QMainWindow):
     "function for viewing the image files"
     def img_file(self):
         os.system(
-            'explorer.exe "C:\\Users\\ajh-1\\OneDrive\\Documents\\Dissertation\\test_images"')  # also doesn't open
-        # correct path, permissions?
+            'explorer.exe "C:\\Users\\ajh-1\\OneDrive\\Documents\\Dissertation\\test_images"')
 
     "function to control links to support docs --support docs yet to be written--"
     def help(self):  # link to support docs in here
